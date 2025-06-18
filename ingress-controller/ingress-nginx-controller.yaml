@@ -1,0 +1,47 @@
+# ingress-nginx-controller.yaml
+# 這份檔案僅調整與「hostNetwork 直綁 80/443」相關的欄位，
+# 其餘都沿用官方 chart 預設值。
+
+# ────────── Controller ──────────
+controller:
+  hostNetwork: false          # 關掉
+  service:
+    enabled: true
+    type: LoadBalancer
+    loadBalancerIP: ""        # Docker Desktop 不能固定；留空
+    externalTrafficPolicy: Local
+
+  # IngressClass 資源（與 Ingress 規則中 ingressClassName 對應）
+  ingressClassResource:
+    name: nginx
+    enabled: true
+    default: false              # 如想讓 nginx 成為集群預設，可改 true
+    controllerValue: "k8s.io/ingress-nginx"
+
+  # 額外 NGINX CLI 參數
+  extraArgs:
+    enable-ssl-passthrough: ""  # 若日後要做 TLS passthrough，可保留
+
+  # NGINX 自訂設定 (ConfigMap 形式)
+  config:
+    use-forwarded-headers: "true"  # 正確傳遞 X-Forwarded-*
+    proxy-body-size: "64m"         # Drone 上傳大型 Artifact 可能需要
+    # 以下可視需求再開
+    # proxy-buffer-size: "16k"
+    # keep-alive: "60"
+
+# ────────── Admission Webhook ──────────
+admissionWebhooks:
+  enabled: true                  # 保留預設，除非你要自建證書
+
+# ────────── RBAC ──────────
+rbac:
+  create: true
+
+# ────────── Default backend (404) ──────────
+defaultBackend:
+  enabled: true                  # 無匹配路由時回 404，方便偵錯
+
+# ────────── Metrics (Prometheus) ──────────
+metrics:
+  enabled: false                 # 需監控時改 true

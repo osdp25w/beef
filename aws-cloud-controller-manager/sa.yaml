@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: aws-cloud-controller-manager
+  namespace: kube-system
+  annotations:
+    iam.amazonaws.com/role: arn:aws:iam::915515002844:role/k8s-ec2-lb

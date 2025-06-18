@@ -1,0 +1,51 @@
+version: "3.9"
+
+services:
+##############################################################################
+# 1. Mosquitto ─ 只做帳密驗證，對外 1883
+##############################################################################
+  mqtt-broker:
+    build:
+      context: ./mosquitto
+      args:
+        MQTT_USER: iot
+        MQTT_PASS: secretpass
+    container_name: mqtt-broker
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+
+##############################################################################
+# 2. TimescaleDB
+##############################################################################
+  tsdb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: tsdb
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER:     beef
+      POSTGRES_PASSWORD: beef-pass
+      POSTGRES_DB:       beef
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres/init_db.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+
+##############################################################################
+# 3. Ingestor
+##############################################################################
+  ingestor:
+    build: ./ingestor
+    container_name: ingestor
+    restart: unless-stopped
+    depends_on:         # 只等 container「啟動」就行
+      - mqtt-broker
+      - tsdb
+    environment:
+      PG_DSN:   "postgresql://beef:beef-pass@tsdb:5432/beef"
+      MQTT_HOST: mqtt-broker
+      MQTT_PORT: "1883"
+      MQTT_USER: iot
+      MQTT_PASS: secretpass
+
+volumes:
+  pgdata:
