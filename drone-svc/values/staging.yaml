@@ -1,0 +1,51 @@
+drone:
+  replicaCount: 1
+
+  image:
+    repository: drone/drone
+    tag: "2"
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 80
+
+  ingress:
+    enabled: true
+    className: nginx
+    host: drone.osdp25w.xyz
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+
+  env:
+    DRONE_SERVER_ROOT: http://drone.osdp25w.xyz
+    DRONE_GITHUB_SERVER: https://github.com
+    DRONE_SERVER_HOST: drone.osdp25w.xyz
+    DRONE_SERVER_PROTO: http
+    DRONE_REPOSITORY_FILTER: Osdp25w
+    DRONE_DATABASE_DRIVER: postgres
+
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+  livenessProbe:
+    httpGet:
+      path: /
+      port: 80
+    initialDelaySeconds: 30
+    periodSeconds: 10
+
+  readinessProbe:
+    httpGet:
+      path: /
+      port: 80
+    initialDelaySeconds: 5
+    periodSeconds: 5
+
