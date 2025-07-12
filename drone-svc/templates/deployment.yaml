@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.drone.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+      annotations: {}
+    spec:
+      containers:
+        - name: {{ .Release.Name }}
+          image: "{{ .Values.drone.image.repository }}:{{ .Values.drone.image.tag }}"
+          imagePullPolicy: {{ .Values.drone.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.drone.service.targetPort }}
+          env:
+            {{- range $key, $value := .Values.drone.env }}
+            - name: {{ $key }}
+              value: "{{ $value }}"
+            {{- end }}
+          envFrom:
+            - secretRef:
+                name: {{ .Release.Name }}-drone-env
+          resources:
+            requests:
+              memory: {{ .Values.drone.resources.requests.memory }}
+              cpu: {{ .Values.drone.resources.requests.cpu }}
+            limits:
+              memory: {{ .Values.drone.resources.limits.memory }}
+              cpu: {{ .Values.drone.resources.limits.cpu }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.drone.livenessProbe.httpGet.path }}
+              port: {{ .Values.drone.livenessProbe.httpGet.port }}
+            initialDelaySeconds: {{ .Values.drone.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.drone.livenessProbe.periodSeconds }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.drone.readinessProbe.httpGet.path }}
+              port: {{ .Values.drone.readinessProbe.httpGet.port }}
+            initialDelaySeconds: {{ .Values.drone.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.drone.readinessProbe.periodSeconds }}
