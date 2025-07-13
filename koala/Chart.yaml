@@ -1,0 +1,6 @@
+apiVersion: v2
+name: koala
+description: A Helm chart for koala
+type: application
+version: 0.1.0
+appVersion: "2"

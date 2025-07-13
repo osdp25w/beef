@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.koala.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: {{ .Release.Name }}
+          image: "{{ .Values.koala.image.repository }}:{{ .Values.koala.image.tag }}"
+          imagePullPolicy: {{ .Values.koala.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.koala.service.targetPort }}
+          command: ["/bin/sh", "-c", "/usr/src/app/entrypoint.sh"]
+          env:
+            {{- range $key, $value := .Values.koala.env }}
+            - name: {{ $key }}
+              value: "{{ $value }}"
+            {{- end }}
+            - name: RABBITMQ_CA_CERT_PATH
+              value: "/etc/rabbitmq/ssl/ca.pem"
+          envFrom:
+            - secretRef:
+                name: {{ .Release.Name }}-env
+          volumeMounts:
+            - name: rabbitmq-ca-cert
+              mountPath: /etc/rabbitmq/ssl/ca.pem
+              subPath: ca.pem
+      volumes:
+        - name: rabbitmq-ca-cert
+          secret:
+            secretName: rabbitmq-ca-cert

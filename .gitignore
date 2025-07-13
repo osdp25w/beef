@@ -1,4 +1,5 @@
-drone-svc/secrets/*.yaml
+*/secrets/*.yaml
+*/secrets/*.pem
 
 
 
