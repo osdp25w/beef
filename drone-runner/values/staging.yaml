@@ -1,0 +1,22 @@
+
+replicaCount: 1
+
+image:
+  repository: drone/drone-runner-kube
+  tag: latest
+  pullPolicy: IfNotPresent
+
+env:
+  DRONE_RPC_PROTO: http
+  DRONE_RPC_HOST: drone-svc
+  DRONE_RUNNER_NAME: drone-runner
+  DRONE_LOGS_DEBUG: true
+  DRONE_RUNNER_NAMESPACE: drone
+  DRONE_NAMESPACE_DEFAULT: drone
+
+
+
+# DRONE_RUNNER_LABELS 格式要求不能用 / (repo=Osdp25w/koala 不合法)
+koala-env:
+  DRONE_RUNNER_LABELS: repo:Osdp25w-koala
+  DRONE_RUNNER_CAPACITY: "1"
