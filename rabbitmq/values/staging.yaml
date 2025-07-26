@@ -1,0 +1,45 @@
+rabbitmq:
+  replicaCount: 1
+
+  image:
+    repository: rabbitmq
+    tag: 3.12-management
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    ports:
+      amqp: 5672
+      mqtt: 1883
+
+  serviceMQTTS:
+    type: NodePort
+    ports:
+      mqtts: 8883
+    nodePorts:
+      mqtts: 31884
+
+  nodeSelector:
+    hostname: "k8s-application"
+
+  storage:
+    size: 20Gi
+    reclaim_policy: Retain
+    hostPathTemplate: /mnt/data/{{ .Release.Name }}/rabbitmq-data
+
+  plugins:
+    - rabbitmq_mqtt
+    - rabbitmq_management
+
+  env:
+    RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbit log_levels [{connection,error},{default,warning}]"
+  
+  # TLS證書配置 (雙向認證)
+  tls:
+    enabled: true
+    mountPath: /etc/rabbitmq/ssl
+    certFile: tls.crt
+    keyFile: tls.key
+    caFile: ca.crt
+    clientCertFile: client.crt
+    clientKeyFile: client.key
