@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-mqtt
+spec:
+  type: {{ .Values.rabbitmq.serviceMQTT.type }}
+  ports:
+    - name: mqtt
+      port: {{ .Values.rabbitmq.serviceMQTT.ports.mqtt }}
+      targetPort: mqtt
+      nodePort: {{ .Values.rabbitmq.serviceMQTT.nodePorts.mqtt }}
+      protocol: TCP
+    - name: mqtts
+      port: {{ .Values.rabbitmq.serviceMQTT.ports.mqtts }}
+      targetPort: mqtts
+      nodePort: {{ .Values.rabbitmq.serviceMQTT.nodePorts.mqtts }}
+      protocol: TCP
+  selector:
+    app: {{ .Release.Name }} 

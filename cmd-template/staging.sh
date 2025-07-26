@@ -62,6 +62,27 @@ helm history koala -n koala
 
 
 
+# =============== rabbitmq ===============
+
+# 自簽mqtt ssl證書
+
+
+
+
+# update staging settings
+helm upgrade --install rabbitmq . -f values/staging.yaml -f secrets/staging.yaml --namespace koala --create-namespace
+
+# force recreate pods
+kubectl rollout restart deployment rabbitmq -n koala
+
+# check release history
+helm history rabbitmq -n koala
+
+
+
+
+
+
 # =============== drone runner ===============
 
 # update staging settings
