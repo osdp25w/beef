@@ -1,4 +1,3 @@
-# Django Web 服務 Deployment
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -46,6 +45,36 @@ spec:
             periodSeconds: 5
             timeoutSeconds: 3
             failureThreshold: 3
+        - name: {{ .Release.Name }}-db-proxy
+          image: "alpine/socat"
+          command:
+            - sh
+            - -c
+            - "socat tcp-listen:5432,fork,reuseaddr tcp-connect:osdp25w-db.clk664ckemji.ap-northeast-3.rds.amazonaws.com:5432"
+          ports:
+            - containerPort: 5432
+              name: db-proxy
+          livenessProbe:
+            tcpSocket:
+              port: 5432
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            tcpSocket:
+              port: 5432
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "25m"
+            limits:
+              memory: "64Mi"
+              cpu: "50m"
 
 ---
 
@@ -101,7 +130,6 @@ spec:
 
 ---
 
-# Celery Worker Deployment
 apiVersion: apps/v1
 kind: Deployment
 metadata:
