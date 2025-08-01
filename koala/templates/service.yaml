@@ -5,9 +5,9 @@ metadata:
   labels:
     app: {{ .Release.Name }}
 spec:
-  type: {{ .Values.koala.service.type }}
+  type: {{ .Values.koala.web.service.type }}
   selector:
     app: {{ .Release.Name }}
   ports:
-    - port: {{ .Values.koala.service.port }}
-      targetPort: {{ .Values.koala.service.targetPort }}
+    - port: {{ .Values.koala.web.service.port }}
+      targetPort: {{ .Values.koala.web.service.targetPort }}

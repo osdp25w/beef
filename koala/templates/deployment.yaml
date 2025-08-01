@@ -1,9 +1,12 @@
+# Django Web 服務 Deployment
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ .Release.Name }}
+  labels:
+    app: {{ .Release.Name }}
 spec:
-  replicas: {{ .Values.koala.replicaCount }}
+  replicas: {{ .Values.koala.web.replicaCount }}
   selector:
     matchLabels:
       app: {{ .Release.Name }}
@@ -14,26 +17,137 @@ spec:
     spec:
       containers:
         - name: {{ .Release.Name }}
-          image: "{{ .Values.koala.image.repository }}:{{ .Values.koala.image.tag }}"
-          imagePullPolicy: {{ .Values.koala.image.pullPolicy }}
+          image: "{{ .Values.koala.web.image.repository }}:{{ .Values.koala.web.image.tag }}"
+          imagePullPolicy: {{ .Values.koala.web.image.pullPolicy }}
           ports:
-            - containerPort: {{ .Values.koala.service.targetPort }}
+            - containerPort: {{ .Values.koala.web.service.targetPort }}
           command: ["/bin/sh", "-c", "/usr/src/app/entrypoint.sh"]
           env:
-            {{- range $key, $value := .Values.koala.env }}
+            {{- range $key, $value := .Values.koala.web.env }}
             - name: {{ $key }}
               value: "{{ $value }}"
             {{- end }}
-            - name: RABBITMQ_CA_CERT_PATH
-              value: "/etc/rabbitmq/ssl/ca.pem"
           envFrom:
             - secretRef:
                 name: {{ .Release.Name }}-env
-          volumeMounts:
-            - name: rabbitmq-ca-cert
-              mountPath: /etc/rabbitmq/ssl/ca.pem
-              subPath: ca.pem
-      volumes:
-        - name: rabbitmq-ca-cert
-          secret:
-            secretName: rabbitmq-ca-cert
+          livenessProbe:
+            httpGet:
+              path: /health/
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /ready/
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-mqtt-client
+  labels:
+    app: {{ .Release.Name }}-mqtt-client
+spec:
+  replicas: {{ .Values.koala.mqtt.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-mqtt-client
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-mqtt-client
+    spec:
+      containers:
+        - name: {{ .Release.Name }}-mqtt-client
+          image: "{{ .Values.koala.mqtt.image.repository }}:{{ .Values.koala.mqtt.image.tag }}"
+          imagePullPolicy: {{ .Values.koala.mqtt.image.pullPolicy }}
+          command: ["/usr/src/app/entrypoint-mqtt-client.sh"]
+          env:
+            {{- range $key, $value := .Values.koala.mqtt.env }}
+            - name: {{ $key }}
+              value: "{{ $value }}"
+            {{- end }}
+          envFrom:
+            - secretRef:
+                name: {{ .Release.Name }}-env
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - "pgrep -f 'python manage.py mqtt_client' || exit 1"
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - "pgrep -f 'python manage.py mqtt_client' || exit 1"
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+---
+
+# Celery Worker Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-iot-default-worker
+  labels:
+    app: {{ .Release.Name }}-iot-default-worker
+spec:
+  replicas: {{ .Values.koala.celery.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-iot-default-worker
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-iot-default-worker
+    spec:
+      containers:
+        - name: {{ .Release.Name }}-iot-default-worker
+          image: "{{ .Values.koala.celery.image.repository }}:{{ .Values.koala.celery.image.tag }}"
+          imagePullPolicy: {{ .Values.koala.celery.image.pullPolicy }}
+          command: ["/usr/src/app/entrypoint-celery.sh"]
+          env:
+            {{- range $key, $value := .Values.koala.celery.env }}
+            - name: {{ $key }}
+              value: "{{ $value }}"
+            {{- end }}
+          envFrom:
+            - secretRef:
+                name: {{ .Release.Name }}-env
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - "pgrep -f 'celery.*worker' || exit 1"
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - "pgrep -f 'celery.*worker' || exit 1"
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
