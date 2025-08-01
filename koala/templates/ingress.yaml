@@ -3,17 +3,17 @@ kind: Ingress
 metadata:
   name: {{ .Release.Name }}-ingress
   annotations:
-    {{- range $key, $value := .Values.koala.ingress.annotations }}
+    {{- range $key, $value := .Values.koala.web.ingress.annotations }}
     {{ $key }}: "{{ $value }}"
     {{- end }}
 spec:
-  ingressClassName: {{ .Values.koala.ingress.className }}
+  ingressClassName: {{ .Values.koala.web.ingress.className }}
   tls:
     - hosts:
-        - {{ .Values.koala.ingress.host }}
+        - {{ .Values.koala.web.ingress.host }}
       secretName: {{ .Release.Name }}-tls-secret
   rules:
-    - host: {{ .Values.koala.ingress.host }}
+    - host: {{ .Values.koala.web.ingress.host }}
       http:
         paths:
           - path: /
@@ -22,4 +22,4 @@ spec:
               service:
                 name: {{ .Release.Name }}
                 port:
-                  number: {{ .Values.koala.service.port }}
+                  number: {{ .Values.koala.web.service.port }}

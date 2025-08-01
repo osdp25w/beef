@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  serviceName: {{ .Release.Name }}
+  replicas: {{ .Values.rabbitmq.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: {{ .Values.rabbitmq.nodeSelector.hostname }}
+      containers:
+        - name: {{ .Release.Name }}
+          image: "{{ .Values.rabbitmq.image.repository }}:{{ .Values.rabbitmq.image.tag }}"
+          imagePullPolicy: {{ .Values.rabbitmq.image.pullPolicy }}
+          ports:
+            - name: amqp
+              containerPort: {{ .Values.rabbitmq.service.ports.amqp }}
+            - name: management
+              containerPort: 15672
+            - name: mqtt
+              containerPort: {{ .Values.rabbitmq.service.ports.mqtt }}
+            - name: mqtts
+              containerPort: {{ .Values.rabbitmq.serviceMQTTS.ports.mqtts }}
+          env:
+            {{- range $key, $value := .Values.rabbitmq.env }}
+            - name: {{ $key }}
+              value: "{{ $value }}"
+            {{- end }}
+          envFrom:
+            - secretRef:
+                name: {{ .Release.Name }}-env
+          volumeMounts:
+            - name: rabbitmq-data
+              mountPath: /var/lib/rabbitmq
+            - name: rabbitmq-config
+              mountPath: /etc/rabbitmq/conf.d/
+            - name: rabbitmq-config
+              mountPath: /etc/rabbitmq/enabled_plugins
+              subPath: enabled_plugins
+            {{- if .Values.rabbitmq.tls.enabled }}
+            - name: rabbitmq-tls
+              mountPath: {{ .Values.rabbitmq.tls.mountPath }}/
+              readOnly: true
+            {{- end }}
+          readinessProbe:
+            exec:
+              command:
+                - rabbitmq-diagnostics
+                - -q
+                - ping
+            initialDelaySeconds: 20
+            periodSeconds: 60
+            timeoutSeconds: 10
+          livenessProbe:
+            exec:
+              command:
+                - rabbitmq-diagnostics
+                - -q
+                - status
+            initialDelaySeconds: 60
+            periodSeconds: 60
+            timeoutSeconds: 15
+      volumes:
+        - name: rabbitmq-config
+          configMap:
+            name: {{ .Release.Name }}-config
+        - name: rabbitmq-data
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-data-pvc
+        {{- if .Values.rabbitmq.tls.enabled }}
+        - name: rabbitmq-tls
+          secret:
+            secretName: rabbitmq-tls
+        {{- end }}

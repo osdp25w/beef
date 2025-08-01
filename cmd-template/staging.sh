@@ -47,8 +47,9 @@ helm history drone-svc -n drone
 # mount aws ca
 # create ns first
 kubectl create namespace koala
+
 # create secret
-kubectl create secret generic rabbitmq-ca-cert --from-file=ca.pem=secrets/AmazonRootCA1.pem -n koala
+# kubectl create secret generic rabbitmq-ca-cert --from-file=ca.pem=secrets/AmazonRootCA1.pem -n koala
 
 # deploy koala
 helm upgrade --install koala . -f values/staging.yaml -f secrets/staging.yaml --namespace koala --create-namespace
@@ -58,6 +59,22 @@ kubectl rollout restart deployment koala -n koala
 
 # check release history
 helm history koala -n koala
+
+
+
+
+# =============== rabbitmq ===============
+
+# update staging settings
+helm upgrade --install rabbitmq . -f values/staging.yaml -f secrets/staging.yaml --namespace koala --create-namespace
+
+# force recreate pods
+kubectl rollout restart deployment rabbitmq -n koala
+
+# check release history
+helm history rabbitmq -n koala
+
+
 
 
 
