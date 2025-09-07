@@ -30,13 +30,55 @@ koala:
       ENV: staging
 
   celery:
-    replicaCount: 1
-    image:
-      repository: osdp25w/koala
-      tag: latest
-      pullPolicy: Always
-    env: 
-      ENV: staging
-    queue: "iot_default_q"
-    concurrency: 1
-    pool: "threads"
+    beat:
+      replicaCount: 1
+      image:
+        repository: osdp25w/koala
+        tag: latest
+        pullPolicy: Always
+      env: 
+        ENV: staging
+    
+    iot_default_worker:
+      replicaCount: 1
+      image:
+        repository: osdp25w/koala
+        tag: latest
+        pullPolicy: Always
+      env: 
+        ENV: staging
+      queue: "iot_default_q"
+      concurrency: 4
+    
+    bike_realtime_status_worker:
+      replicaCount: 1
+      image:
+        repository: osdp25w/koala
+        tag: latest
+        pullPolicy: Always
+      env: 
+        ENV: staging
+      queue: "bike_realtime_status_q"
+      concurrency: 4
+    
+    bike_error_log_worker:
+      replicaCount: 1
+      image:
+        repository: osdp25w/koala
+        tag: latest
+        pullPolicy: Always
+      env: 
+        ENV: staging
+      queue: "bike_error_log_q"
+      concurrency: 4
+    
+    statistics_worker:
+      replicaCount: 1
+      image:
+        repository: osdp25w/koala
+        tag: latest
+        pullPolicy: Always
+      env: 
+        ENV: staging
+      queue: "statistics_q"
+      concurrency: 4
