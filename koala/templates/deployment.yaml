@@ -137,7 +137,7 @@ metadata:
   labels:
     app: {{ .Release.Name }}-iot-default-worker
 spec:
-  replicas: {{ .Values.koala.celery.replicaCount }}
+  replicas: {{ .Values.koala.celery.iot_default_worker.replicaCount }}
   selector:
     matchLabels:
       app: {{ .Release.Name }}-iot-default-worker
@@ -148,11 +148,11 @@ spec:
     spec:
       containers:
         - name: {{ .Release.Name }}-iot-default-worker
-          image: "{{ .Values.koala.celery.image.repository }}:{{ .Values.koala.celery.image.tag }}"
-          imagePullPolicy: {{ .Values.koala.celery.image.pullPolicy }}
-          command: ["/usr/src/app/entrypoint-celery.sh"]
+          image: "{{ .Values.koala.celery.iot_default_worker.image.repository }}:{{ .Values.koala.celery.iot_default_worker.image.tag }}"
+          imagePullPolicy: {{ .Values.koala.celery.iot_default_worker.image.pullPolicy }}
+          command: ["/usr/src/app/entrypoint-celery.sh", "{{ .Values.koala.celery.iot_default_worker.concurrency }}", "{{ .Values.koala.celery.iot_default_worker.queue }}"]
           env:
-            {{- range $key, $value := .Values.koala.celery.env }}
+            {{- range $key, $value := .Values.koala.celery.iot_default_worker.env }}
             - name: {{ $key }}
               value: "{{ $value }}"
             {{- end }}
@@ -178,4 +178,217 @@ spec:
             initialDelaySeconds: 10
             periodSeconds: 10
             timeoutSeconds: 3
+            failureThreshold: 3
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-bike-realtime-status-worker
+  labels:
+    app: {{ .Release.Name }}-bike-realtime-status-worker
+spec:
+  replicas: {{ .Values.koala.celery.bike_realtime_status_worker.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-bike-realtime-status-worker
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-bike-realtime-status-worker
+    spec:
+      containers:
+        - name: {{ .Release.Name }}-bike-realtime-status-worker
+          image: "{{ .Values.koala.celery.bike_realtime_status_worker.image.repository }}:{{ .Values.koala.celery.bike_realtime_status_worker.image.tag }}"
+          imagePullPolicy: {{ .Values.koala.celery.bike_realtime_status_worker.image.pullPolicy }}
+          command: ["/usr/src/app/entrypoint-celery.sh", "{{ .Values.koala.celery.bike_realtime_status_worker.concurrency }}", "{{ .Values.koala.celery.bike_realtime_status_worker.queue }}"]
+          env:
+            {{- range $key, $value := .Values.koala.celery.bike_realtime_status_worker.env }}
+            - name: {{ $key }}
+              value: "{{ $value }}"
+            {{- end }}
+          envFrom:
+            - secretRef:
+                name: {{ .Release.Name }}-env
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - "pgrep -f 'celery.*worker' || exit 1"
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - "pgrep -f 'celery.*worker' || exit 1"
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-bike-error-log-worker
+  labels:
+    app: {{ .Release.Name }}-bike-error-log-worker
+spec:
+  replicas: {{ .Values.koala.celery.bike_error_log_worker.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-bike-error-log-worker
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-bike-error-log-worker
+    spec:
+      containers:
+        - name: {{ .Release.Name }}-bike-error-log-worker
+          image: "{{ .Values.koala.celery.bike_error_log_worker.image.repository }}:{{ .Values.koala.celery.bike_error_log_worker.image.tag }}"
+          imagePullPolicy: {{ .Values.koala.celery.bike_error_log_worker.image.pullPolicy }}
+          command: ["/usr/src/app/entrypoint-celery.sh", "{{ .Values.koala.celery.bike_error_log_worker.concurrency }}", "{{ .Values.koala.celery.bike_error_log_worker.queue }}"]
+          env:
+            {{- range $key, $value := .Values.koala.celery.bike_error_log_worker.env }}
+            - name: {{ $key }}
+              value: "{{ $value }}"
+            {{- end }}
+          envFrom:
+            - secretRef:
+                name: {{ .Release.Name }}-env
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - "pgrep -f 'celery.*worker' || exit 1"
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - "pgrep -f 'celery.*worker' || exit 1"
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-statistics-worker
+  labels:
+    app: {{ .Release.Name }}-statistics-worker
+spec:
+  replicas: {{ .Values.koala.celery.statistics_worker.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-statistics-worker
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-statistics-worker
+    spec:
+      containers:
+        - name: {{ .Release.Name }}-statistics-worker
+          image: "{{ .Values.koala.celery.statistics_worker.image.repository }}:{{ .Values.koala.celery.statistics_worker.image.tag }}"
+          imagePullPolicy: {{ .Values.koala.celery.statistics_worker.image.pullPolicy }}
+          command: ["/usr/src/app/entrypoint-celery.sh", "{{ .Values.koala.celery.statistics_worker.concurrency }}", "{{ .Values.koala.celery.statistics_worker.queue }}"]
+          env:
+            {{- range $key, $value := .Values.koala.celery.statistics_worker.env }}
+            - name: {{ $key }}
+              value: "{{ $value }}"
+            {{- end }}
+          envFrom:
+            - secretRef:
+                name: {{ .Release.Name }}-env
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - "pgrep -f 'celery.*worker' || exit 1"
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - "pgrep -f 'celery.*worker' || exit 1"
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-celery-beat
+spec:
+  replicas: {{ .Values.koala.celery.beat.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-celery-beat
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-celery-beat
+    spec:
+      containers:
+        - name: {{ .Release.Name }}-celery-beat
+          image: "{{ .Values.koala.celery.beat.image.repository }}:{{ .Values.koala.celery.beat.image.tag }}"
+          imagePullPolicy: {{ .Values.koala.celery.beat.image.pullPolicy }}
+          command: [
+            "celery",
+            "-A",
+            "koala",
+            "beat",
+            "--loglevel=info",
+            "--scheduler=django_celery_beat.schedulers:DatabaseScheduler"
+          ]
+          env:
+            {{- range $key, $value := .Values.koala.celery.beat.env }}
+            - name: {{ $key }}
+              value: "{{ $value }}"
+            {{- end }}
+          envFrom:
+            - secretRef:
+                name: {{ .Release.Name }}-env
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - 'pgrep -f "celery beat"'
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - 'pgrep -f "celery beat"'
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
             failureThreshold: 3
