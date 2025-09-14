@@ -1,0 +1,42 @@
+osrm:
+  replicaCount: 1
+  
+  image:
+    repository: ghcr.io/project-osrm/osrm-backend
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 80
+  
+  storage:
+    hostPath: /home/ubuntu/osrm-data
+  
+  mapData:
+    downloadUrl: "https://download.geofabrik.de/asia/taiwan-latest.osm.pbf"
+  
+  profile: car  # car, bicycle, foot
+  
+  config:
+    maxLocationsTrip: 5
+    maxLocationsViaroute: 20
+    maxLocationsDistanceTable: 50
+    maxLocationsMapMatching: 500
+  
+  resources:
+    requests:
+      memory: "800Mi"
+      cpu: "300m"
+    limits:
+      memory: "1.5Gi"
+      cpu: "800m"
+  
+  dataPreparation:
+    resources:
+      requests:
+        memory: "2Gi"
+        cpu: "1000m"
+      limits:
+        memory: "4Gi"
+        cpu: "1500m"
