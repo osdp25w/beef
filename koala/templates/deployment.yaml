@@ -341,6 +341,56 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  name: {{ .Release.Name }}-websocket
+  labels:
+    app: {{ .Release.Name }}-websocket
+spec:
+  replicas: {{ .Values.koala.websocket.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-websocket
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-websocket
+    spec:
+      containers:
+        - name: {{ .Release.Name }}-websocket
+          image: "{{ .Values.koala.websocket.image.repository }}:{{ .Values.koala.websocket.image.tag }}"
+          imagePullPolicy: {{ .Values.koala.websocket.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.koala.websocket.service.targetPort }}
+          command: ["daphne", "-b", "0.0.0.0", "-p", "{{ .Values.koala.websocket.service.targetPort }}", "koala.asgi:application"]
+          env:
+            {{- range $key, $value := .Values.koala.websocket.env }}
+            - name: {{ $key }}
+              value: "{{ $value }}"
+            {{- end }}
+          envFrom:
+            - secretRef:
+                name: {{ .Release.Name }}-env
+          livenessProbe:
+            httpGet:
+              path: /health/
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /ready/
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
   name: {{ .Release.Name }}-celery-beat
 spec:
   replicas: {{ .Values.koala.celery.beat.replicaCount }}
