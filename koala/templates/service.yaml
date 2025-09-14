@@ -11,3 +11,19 @@ spec:
   ports:
     - port: {{ .Values.koala.web.service.port }}
       targetPort: {{ .Values.koala.web.service.targetPort }}
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-websocket
+  labels:
+    app: {{ .Release.Name }}-websocket
+spec:
+  type: {{ .Values.koala.websocket.service.type }}
+  selector:
+    app: {{ .Release.Name }}-websocket
+  ports:
+    - port: {{ .Values.koala.websocket.service.port }}
+      targetPort: {{ .Values.koala.websocket.service.targetPort }}

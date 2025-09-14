@@ -16,9 +16,21 @@ koala:
       annotations:
         cert-manager.io/cluster-issuer: letsencrypt
         nginx.ingress.kubernetes.io/ssl-redirect: "true"
-    env: 
+    env:
       ENV: staging
 
+  websocket:
+    replicaCount: 1
+    image:
+      repository: osdp25w/koala
+      tag: latest
+      pullPolicy: Always
+    service:
+      type: ClusterIP
+      port: 8000
+      targetPort: 8000
+    env:
+      ENV: staging
 
   mqtt:
     replicaCount: 1

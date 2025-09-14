@@ -6,6 +6,9 @@ metadata:
     {{- range $key, $value := .Values.koala.web.ingress.annotations }}
     {{ $key }}: "{{ $value }}"
     {{- end }}
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/websocket-services: "{{ .Release.Name }}-websocket"
 spec:
   ingressClassName: {{ .Values.koala.web.ingress.className }}
   tls:
@@ -16,6 +19,13 @@ spec:
     - host: {{ .Values.koala.web.ingress.host }}
       http:
         paths:
+          - path: /ws/
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-websocket
+                port:
+                  number: {{ .Values.koala.websocket.service.port }}
           - path: /
             pathType: Prefix
             backend:
