@@ -1,0 +1,6 @@
+apiVersion: v2
+name: osrm
+description: A Helm chart for OSRM (Open Source Routing Machine)
+type: application
+version: 0.1.0
+appVersion: "5.27.1"

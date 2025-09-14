@@ -1,0 +1,168 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    app: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.osrm.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+    spec:
+      initContainers:
+        # 先用curl容器下載數據
+        - name: download-map-data
+          image: curlimages/curl:latest
+          command: ["/bin/sh"]
+          args:
+            - "-c"
+            - |
+              if [ ! -f /data/taiwan-latest.osm.pbf ]; then
+                echo "Downloading Taiwan map data..."
+                curl -L -o /data/taiwan-latest.osm.pbf {{ .Values.osrm.mapData.downloadUrl }}
+                # 設置文件權限讓其他容器可以讀取
+                chmod 644 /data/taiwan-latest.osm.pbf
+                echo "Download completed"
+              else
+                echo "Map data already exists, skipping download"
+              fi
+          volumeMounts:
+            - name: osrm-data
+              mountPath: /data
+          securityContext:
+            runAsUser: 0  # 以root身份運行，確保有權限設置文件
+        
+        # 再用OSRM容器處理數據
+        - name: osrm-data-preparation
+          image: {{ .Values.osrm.image.repository }}:{{ .Values.osrm.image.tag }}
+          command: ["/bin/sh"]
+          args:
+            - "-c"
+            - |
+              echo "Starting OSRM data preparation..."
+              
+              # 使用文件鎖避免同時下載
+              exec 200>/data/.preparation.lock
+              if ! flock -n 200; then
+                echo "Another preparation is running, waiting..."
+                flock 200
+                echo "Lock acquired, checking if data is ready..."
+              fi
+              
+              # 檢查地圖數據是否存在（由前一個initContainer下載）
+              if [ ! -f /data/taiwan-latest.osm.pbf ]; then
+                echo "Error: Map data not found! Download may have failed."
+                exit 1
+              fi
+              
+              # 仿照 GitHub issue #5466 解決方案：強制重新執行所有 OSRM 命令
+              echo "Re-running all OSRM commands to ensure proper file generation..."
+              
+              # 清理可能不完整的舊文件
+              echo "Cleaning potentially incomplete files..."
+              rm -f /data/taiwan-latest.osrm*
+              
+              # 步驟1: 提取地圖數據 (按照官方流程)
+              echo "Step 1: Extracting map data..."
+              osrm-extract -p /opt/{{ .Values.osrm.profile }}.lua /data/taiwan-latest.osm.pbf || { echo "osrm-extract failed"; exit 1; }
+              echo "Extraction completed successfully"
+              
+              # 步驟2: MLD pipeline partition
+              echo "Step 2: Partitioning graph (MLD pipeline)..."
+              osrm-partition /data/taiwan-latest.osrm || { echo "osrm-partition failed"; exit 1; }
+              echo "Partitioning completed successfully"
+              
+              # 步驟3: MLD pipeline customize
+              echo "Step 3: Customizing graph (MLD pipeline)..."
+              osrm-customize /data/taiwan-latest.osrm || { echo "osrm-customize failed"; exit 1; }
+              echo "Customization completed successfully"
+              
+              # 驗證關鍵文件是否生成（仿照 GitHub issue 解決方案）
+              echo "Verifying critical OSRM files..."
+              ls -la /data/taiwan-latest.osrm*
+              
+              # 特別檢查 datasource_names 文件
+              if [ -f /data/taiwan-latest.osrm.datasource_names ]; then
+                echo "✓ datasource_names file generated successfully"
+                ls -la /data/taiwan-latest.osrm.datasource_names
+              else
+                echo "✗ datasource_names file missing - this may cause startup issues"
+                echo "Available files:"
+                ls -la /data/taiwan-latest.osrm*
+              fi
+              
+              echo "OSRM data preparation completed successfully!"
+          volumeMounts:
+            - name: osrm-data
+              mountPath: /data
+          resources:
+            requests:
+              memory: {{ .Values.osrm.dataPreparation.resources.requests.memory }}
+              cpu: {{ .Values.osrm.dataPreparation.resources.requests.cpu }}
+            limits:
+              memory: {{ .Values.osrm.dataPreparation.resources.limits.memory }}
+              cpu: {{ .Values.osrm.dataPreparation.resources.limits.cpu }}
+          securityContext:
+            runAsUser: 0  # 以root身份運行，確保有權限讀取文件
+      
+      containers:
+        - name: {{ .Release.Name }}
+          image: {{ .Values.osrm.image.repository }}:{{ .Values.osrm.image.tag }}
+          command: ["osrm-routed"]
+          args:
+            - "--algorithm"
+            - "MLD"
+            - "/data/taiwan-latest.osrm"
+          ports:
+            - containerPort: 5000
+              name: http
+          volumeMounts:
+            - name: osrm-data
+              mountPath: /data
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /route/v1/driving/121.5654,25.0330;121.5794,25.0478
+              port: 5000
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /route/v1/driving/121.5654,25.0330;121.5794,25.0478
+              port: 5000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              memory: {{ .Values.osrm.resources.requests.memory }}
+              cpu: {{ .Values.osrm.resources.requests.cpu }}
+            limits:
+              memory: {{ .Values.osrm.resources.limits.memory }}
+              cpu: {{ .Values.osrm.resources.limits.cpu }}
+          env:
+            - name: OSRM_MAX_LOCATIONS_TRIP
+              value: "{{ .Values.osrm.config.maxLocationsTrip }}"
+            - name: OSRM_MAX_LOCATIONS_VIAROUTE
+              value: "{{ .Values.osrm.config.maxLocationsViaroute }}"
+            - name: OSRM_MAX_LOCATIONS_DISTANCE_TABLE
+              value: "{{ .Values.osrm.config.maxLocationsDistanceTable }}"
+            - name: OSRM_MAX_LOCATIONS_MAP_MATCHING
+              value: "{{ .Values.osrm.config.maxLocationsMapMatching }}"
+          securityContext:
+            runAsUser: 0  # 以root身份運行，確保有權限讀取文件
+      
+      volumes:
+        - name: osrm-data
+          hostPath:
+            path: {{ .Values.osrm.storage.hostPath }}
+            type: DirectoryOrCreate
+      
